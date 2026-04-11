@@ -197,6 +197,7 @@ The mainline MVP is complete. Current follow-up work is mainly:
 - making Windows GPU embedding an explicit optional enhancement
 - improving the `gc`, `repair`, and `lint` workflow and skill experience
 - adding a lightweight way for users inside Claudian to record `llm-wiki` TODOs against the local `llm-wiki` repo for continued iteration
+- validating that a wiki skill can be installed and used reliably across different models and Claude Code sessions
 
 ## License
 

@@ -197,6 +197,7 @@ node /path/to/llm-wiki/dist/index.js <command>
 - Windows 下将 GPU embedding 明确为可选增强能力
 - 补强 `gc`、`repair`、`lint` skill 的整体体验
 - 支持用户在 Claudian 中直接记录 `llm-wiki` 待办，并落到本地 `llm-wiki` 仓库中持续迭代
+- 验证某个 wiki skill 在不同模型和 Claude Code 会话中的安装、识别与调用一致性
 
 ## License
 
