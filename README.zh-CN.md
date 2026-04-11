@@ -168,6 +168,9 @@ node /path/to/llm-wiki/dist/index.js <command>
 - `init`：先做环境预检，再在当前目录创建新 wiki
 - `health`：检查当前环境和实例状态
 - `repair`：在已有 wiki 中补齐缺失元文件
+- `list`：列出全局注册表中已记录的 wiki 实例
+- `gc`：清理全局注册表里已经失效的实例路径
+- `index`：为当前 wiki 建立或刷新本地 qmd 索引
 - `skill install`：把生成的 wiki skill 安装到 Claude Code scope
 - `query`：通过 `qmd` 查询 wiki，在 embedding 不可用时自动降级
 
@@ -192,6 +195,8 @@ node /path/to/llm-wiki/dist/index.js <command>
 
 - URL ingest 的关键图片可选同步
 - Windows 下将 GPU embedding 明确为可选增强能力
+- 补强 `gc`、`repair`、`lint` skill 的整体体验
+- 支持用户在 Claudian 中直接记录 `llm-wiki` 待办，并落到本地 `llm-wiki` 仓库中持续迭代
 
 ## License
 

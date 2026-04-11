@@ -168,6 +168,9 @@ What each one is for:
 - `init`: run environment preflight, then create a new wiki in the current directory
 - `health`: inspect environment and current wiki status
 - `repair`: regenerate missing wiki metadata files inside an existing wiki
+- `list`: show wiki instances tracked in the global registry
+- `gc`: remove missing entries from the global registry
+- `index`: build or refresh the local qmd index for the current wiki
 - `skill install`: install the generated wiki skill into a Claude Code scope
 - `query`: query the wiki through `qmd`, with automatic fallback when embeddings are unavailable
 
@@ -192,6 +195,8 @@ The mainline MVP is complete. Current follow-up work is mainly:
 
 - optional key-image sync during URL ingest
 - making Windows GPU embedding an explicit optional enhancement
+- improving the `gc`, `repair`, and `lint` workflow and skill experience
+- adding a lightweight way for users inside Claudian to record `llm-wiki` TODOs against the local `llm-wiki` repo for continued iteration
 
 ## License
 

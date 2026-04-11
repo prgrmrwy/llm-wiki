@@ -73,4 +73,3 @@ init SHALL 在完成结构创建后，输出下一步操作说明，覆盖 healt
 #### Scenario: 输出开始使用步骤
 - **WHEN** init 完成
 - **THEN** 控制台输出按顺序说明：health 检查、repair 用途、Obsidian/Claudian 手动步骤、skill install 与后续 `/wiki-*` 使用方式
-

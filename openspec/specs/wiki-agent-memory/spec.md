@@ -40,4 +40,3 @@ ingest / query 归档 / lint 修复等操作的 Skill 指令 SHALL 包含"完成
 #### Scenario: 跨 session 状态延续
 - **WHEN** 用户关闭 Obsidian 后重新打开，Claudian 启动新 session
 - **THEN** Claude 从项目根读取 `CLAUDE.md` 与 `.wiki/context.md`，感知上次留下的进度和未完成项，无需用户重新说明
-
