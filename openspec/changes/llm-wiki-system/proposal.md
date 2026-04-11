@@ -6,10 +6,10 @@
 
 - 新增 `llm-wiki` CLI 工具（TypeScript），负责项目初始化、全局注册表管理、skill 部署和 agent 友好的搜索接口
 - 新增 Claude Code Skill 集合（SKILL.md），驱动 ingest / query / lint 三个核心 LLM 操作
-- 新增 wiki 目录结构规范：`.wiki/` 元数据 + `sources/` 原始文件 + `wiki/`（Obsidian Vault）
+- 新增 wiki 目录结构规范：项目根同时作为 Claude/Claudian 工作根和 Obsidian Vault 根；`.wiki/` 存元数据，`sources/` 存原始资料，`wiki/` 存知识内容
 - 新增 `CLAUDE.md`（Claude Code / Claudian 读取），配合 `.wiki/context.md` 动态工作记忆实现跨 session 持久状态
 - 新增 qmd 集成，提供本地 BM25 + vector 混合搜索
-- 新增 health 检查命令，验证环境依赖（claudian、obsidian-cli、qmd、claude CLI）和 wiki 实例完整性
+- 新增 health 检查命令，验证必需环境依赖（claudian、Obsidian CLI、qmd、claude CLI）和 wiki 实例完整性
 
 ## Capabilities
 
@@ -30,6 +30,6 @@
 
 - 新增 CLI 包：`llm-wiki`（TypeScript / Bun）
 - 依赖：`qmd`（搜索引擎，TypeScript/Bun）
-- 每个 wiki 实例生成标准 Obsidian Vault，可直接用 Obsidian 打开
+- 每个 wiki 实例根目录本身就是标准 Obsidian Vault，可直接用 Obsidian 打开；知识页面集中在 `wiki/`
 - Skill 安装到 `~/.claude/skills/` 或 `.claude/skills/`，影响 Claude Code 会话上下文
 - 全局注册表写入 `~/.llm-wiki/registry.yaml`

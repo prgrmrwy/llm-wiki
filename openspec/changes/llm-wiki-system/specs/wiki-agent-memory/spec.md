@@ -4,7 +4,7 @@
 `llm-wiki init` SHALL 生成 `CLAUDE.md`，供 Claude Code / Claudian 读取，包含：wiki 领域身份、可用 skill 说明、启动时读取 context.md 的指令。
 
 #### Scenario: Claude Code 通过 Claudian 打开 vault
-- **WHEN** Claudian 以 wiki 根目录为工作目录启动 Claude Code
+- **WHEN** Claudian 以 wiki 实例根目录为工作目录启动 Claude Code，且 Obsidian 打开的 Vault 根也是该目录
 - **THEN** Claude 读取 `CLAUDE.md`，知道自己是该领域 wiki 的专属 agent，读取 `context.md` 了解当前状态
 
 ---
@@ -36,4 +36,4 @@ ingest / query 归档 / lint 修复等操作的 Skill 指令 SHALL 包含"完成
 
 #### Scenario: 跨 session 状态延续
 - **WHEN** 用户关闭 Obsidian 后重新打开，Claudian 启动新 session
-- **THEN** Claude 读取 `context.md`，感知上次留下的进度和未完成项，无需用户重新说明
+- **THEN** Claude 从项目根读取 `CLAUDE.md` 与 `.wiki/context.md`，感知上次留下的进度和未完成项，无需用户重新说明

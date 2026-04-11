@@ -1,0 +1,27 @@
+{
+  "name": "llm-wiki",
+  "version": "0.1.0",
+  "description": "Local LLM wiki CLI for Obsidian-based knowledge systems.",
+  "type": "module",
+  "bin": {
+    "llm-wiki": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc --noEmit -p tsconfig.json",
+    "dev": "bun run src/index.ts"
+  },
+  "engines": {
+    "bun": ">=1.1.0",
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^7.3.2",
+    "commander": "^14.0.0",
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.0",
+    "typescript": "^5.9.3"
+  }
+}

@@ -27,11 +27,13 @@
 ---
 
 ### Requirement: 离线优先，ingest 时立即下载远端内容
-`/wiki-ingest <url>` SHALL 在处理前将 URL 内容下载保存至 `sources/downloaded/`，后续处理基于本地文件。
+`/wiki-ingest <url>` SHALL 在处理前将 URL 正文提取并保存为 `sources/downloaded/` 下的 Markdown 本地副本，后续处理基于该本地文件。
 
 #### Scenario: URL ingest
 - **WHEN** 用户传入 HTTP/HTTPS URL
-- **THEN** 内容保存为 `sources/downloaded/<domain>-<timestamp>.html`（或 PDF），再进入 ingest pipeline
+- **THEN** 正文内容保存为 `sources/downloaded/<domain>-<timestamp>.md`
+- **AND** 该副本为可直接阅读的纯文本 Markdown，而不是无后缀文件
+- **AND** 后续 ingest pipeline 只基于该本地副本继续处理
 
 #### Scenario: 本地文件 ingest
 - **WHEN** 用户传入本地文件路径

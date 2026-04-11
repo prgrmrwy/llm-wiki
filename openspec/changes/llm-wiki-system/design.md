@@ -38,11 +38,21 @@
 
 ### D2：wiki 层采用 Obsidian Vault 格式
 
-**决策**：`wiki/` 目录初始化为标准 Obsidian Vault（含 `.obsidian/` 基础配置），页面使用 `[[wikilinks]]`。
+**决策**：wiki 实例根目录初始化为标准 Obsidian Vault（根目录含 `.obsidian/` 基础配置），知识内容集中存放在 `wiki/` 子目录，页面使用 `[[wikilinks]]`。
 
-**原因**：Obsidian + Claudian 提供免费的图谱浏览、双向链接、全文搜索和 Claude Code 侧栏操作，覆盖原本计划自建的 Web UI 的全部需求。`[[wikilinks]]` 是 Obsidian 原生格式，图关系自动建立。
+**原因**：Obsidian + Claudian 提供免费的图谱浏览、双向链接、全文搜索和 Claude Code 侧栏操作，覆盖原本计划自建的 Web UI 的全部需求。将 Vault 根、Claude/Claudian 工作根、CLI wiki 根统一到实例根目录，可以让 agent 稳定读取 `CLAUDE.md`、`.wiki/context.md`、`.claude/` 等控制层文件，同时把知识内容继续收敛到 `wiki/` 目录。`[[wikilinks]]` 是 Obsidian 原生格式，图关系自动建立。
 
 **替代方案**：自建 Web UI → 开发成本高，功能不如 Obsidian 成熟，放弃。
+
+---
+
+### D2.1：根目录作为工作根，`wiki/` 作为内容根
+
+**决策**：Claude/Claudian 的工作目录、Obsidian Vault 根目录、`llm-wiki` CLI 的 wiki 根目录统一为实例根目录；`wiki/` 只承担知识内容区职责。
+
+**原因**：如果只把 `wiki/` 当作 Vault/工作目录，而把 `CLAUDE.md`、`.wiki/`、`.claude/`、`sources/` 留在上层，agent 指令发现、跨 session 记忆读取和相对路径心智模型都会变得不稳定。统一根目录后，环境感知最稳定；Obsidian 即使看到非内容目录，也只是轻微界面成本。
+
+**替代方案**：只将 `wiki/` 打开为 Vault，并通过桥接文件回溯上层环境 → 可行但更脆弱，放弃。
 
 ---
 
@@ -96,5 +106,5 @@
 
 ## Open Questions
 
-- obsidian-cli 的关系查询能力是否值得在 MVP 后集成，作为 qmd 的补充（图关系查询 vs 语义搜索）？
+- Obsidian CLI 的关系查询能力是否值得在 MVP 后集成，作为 qmd 的补充（图关系查询 vs 语义搜索）？
 - schema 模板的四个基础类型（research / engineering / investment / learning）是否覆盖主要场景，还是需要更多？
