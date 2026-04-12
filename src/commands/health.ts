@@ -36,12 +36,7 @@ export async function buildEnvironmentChecks(): Promise<CheckRow[]> {
   const claudeInstalled = checkCommand("claude", ["--version"]);
   const qmdInstalled = await isQmdAvailable();
   const obsidianCliCheck = detectObsidianCli();
-  const claudeAuthCandidates = [
-    path.join(getUserHome(), ".claude", ".credentials.json"),
-    path.join(getUserHome(), ".config", "claude-code", "auth.json"),
-  ];
-  const claudeLoggedIn = claudeInstalled.ok
-    && (await Promise.all(claudeAuthCandidates.map((candidate) => exists(candidate)))).some(Boolean);
+  const claudeAuthStatus = await detectClaudeAuthStatus(claudeInstalled.ok);
 
   return [
     {
@@ -51,13 +46,13 @@ export async function buildEnvironmentChecks(): Promise<CheckRow[]> {
     },
     {
       label: "Claude Login",
-      ok: claudeLoggedIn,
-      detail: claudeLoggedIn ? "检测到本地 Claude 凭据" : "未检测到登录状态，运行 `claude` 完成登录",
+      ok: claudeAuthStatus.ok,
+      detail: claudeAuthStatus.detail,
     },
     {
       label: "qmd",
       ok: qmdInstalled,
-      detail: qmdInstalled ? "已安装" : "缺失，安装：bun install -g @tobilu/qmd",
+      detail: qmdInstalled ? "已安装" : "缺失，安装：npm install -g @tobilu/qmd",
     },
     {
       label: "Obsidian CLI",
@@ -72,6 +67,66 @@ export async function buildEnvironmentChecks(): Promise<CheckRow[]> {
       detail: "无法程序化检测，请手动确认桌面应用已安装",
     },
   ];
+}
+
+async function detectClaudeAuthStatus(cliInstalled: boolean): Promise<CheckRow> {
+  if (!cliInstalled) {
+    return {
+      label: "Claude Login",
+      ok: false,
+      detail: "Claude CLI 未安装，无法检测登录状态",
+    };
+  }
+
+  const authStatus = checkCommand("claude", ["auth", "status"]);
+  if (authStatus.ok) {
+    const parsed = tryParseJson(authStatus.output);
+    const email = typeof parsed?.email === "string" ? parsed.email : null;
+    const authMethod = typeof parsed?.authMethod === "string" ? parsed.authMethod : null;
+    const detailParts = ["已通过 Claude CLI 检测到登录状态"];
+
+    if (email) {
+      detailParts.push(email);
+    }
+
+    if (authMethod) {
+      detailParts.push(`auth=${authMethod}`);
+    }
+
+    return {
+      label: "Claude Login",
+      ok: true,
+      detail: detailParts.join(" · "),
+    };
+  }
+
+  const claudeAuthCandidates = [
+    path.join(getUserHome(), ".claude", ".credentials.json"),
+    path.join(getUserHome(), ".config", "claude-code", "auth.json"),
+  ];
+  const hasCredentialFile = (await Promise.all(claudeAuthCandidates.map((candidate) => exists(candidate)))).some(Boolean);
+
+  if (hasCredentialFile) {
+    return {
+      label: "Claude Login",
+      ok: true,
+      detail: "检测到本地 Claude 凭据文件（CLI 状态命令不可用或返回异常）",
+    };
+  }
+
+  return {
+    label: "Claude Login",
+    ok: false,
+    detail: "未检测到登录状态；先尝试 `claude auth status`，如未登录则运行 `claude auth login`",
+  };
+}
+
+function tryParseJson(value: string): Record<string, unknown> | null {
+  try {
+    return JSON.parse(value) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
 }
 
 function detectObsidianCli(): { ok: boolean; detail: string } {
@@ -91,12 +146,14 @@ function detectObsidianCli(): { ok: boolean; detail: string } {
   }
 
   const whereOfficial = checkCommand("where.exe", ["obsidian"]);
-  if (whereOfficial.ok) {
+  const whichOfficial = checkCommand("which", ["obsidian"]);
+  if (whereOfficial.ok || whichOfficial.ok) {
     return { ok: true, detail: "已安装" };
   }
 
   const whereLegacy = checkCommand("where.exe", ["obsidian-cli"]);
-  if (whereLegacy.ok) {
+  const whichLegacy = checkCommand("which", ["obsidian-cli"]);
+  if (whereLegacy.ok || whichLegacy.ok) {
     return { ok: true, detail: "已安装（legacy obsidian-cli）" };
   }
 

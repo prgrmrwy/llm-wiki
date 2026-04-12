@@ -116,6 +116,7 @@ Then:
 About `init`:
 
 - `preflight` checks the local environment before creating the wiki
+- `auto fix` is offered in interactive mode for automatically repairable issues such as `Claude CLI`, `Claude Login`, and `qmd`
 - `setup guidance` appears only when something is missing and explains what to install or do manually
 - `init` then creates the wiki files and directories
 
@@ -181,6 +182,13 @@ Environment notes:
 - Obsidian
 - Claudian
 - Claude Code CLI
+
+Cross-platform notes:
+
+- primary validation targets are Windows and macOS
+- `Claude Login` is detected via `claude auth status` first, which covers macOS Keychain-backed auth
+- `qmd` resolution checks PATH, `npm root -g`, and common global install locations
+- for manual `qmd` installation, prefer `npm install -g @tobilu/qmd`
 
 Current search behavior:
 

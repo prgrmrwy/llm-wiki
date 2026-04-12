@@ -116,6 +116,7 @@ node /path/to/llm-wiki/dist/index.js skill install my-wiki
 关于 `init`：
 
 - `preflight`：真正创建 wiki 之前，先检查本机环境
+- `auto fix`：对 `Claude CLI`、`Claude Login`、`qmd` 等可自动处理项，`init` 会在交互模式下提供自动修复
 - `setup guidance`：只有发现缺项时才出现，用来解释要安装什么、需要手动做什么
 - `init`：随后才真正创建 wiki 文件和目录
 
@@ -181,6 +182,13 @@ node /path/to/llm-wiki/dist/index.js <command>
 - Obsidian
 - Claudian
 - Claude Code CLI
+
+跨平台说明：
+
+- 主测平台为 Windows 和 macOS
+- `Claude Login` 优先通过 `claude auth status` 检测，兼容 macOS Keychain
+- `qmd` 会同时探测 PATH、`npm root -g` 和常见全局安装目录
+- 如需手动安装 `qmd`，优先使用 `npm install -g @tobilu/qmd`
 
 当前搜索行为：
 

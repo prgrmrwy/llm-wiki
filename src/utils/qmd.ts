@@ -370,7 +370,7 @@ async function resolveQmdCommand(): Promise<QmdCommand | null> {
     };
   }
 
-  for (const candidate of getFallbackQmdEntryCandidates()) {
+  for (const candidate of await getFallbackQmdEntryCandidates()) {
     if (!(await exists(candidate))) {
       continue;
     }
@@ -387,11 +387,20 @@ async function resolveQmdCommand(): Promise<QmdCommand | null> {
   return null;
 }
 
-function getFallbackQmdEntryCandidates(): string[] {
+async function getFallbackQmdEntryCandidates(): Promise<string[]> {
+  const npmRoot = checkCommand("npm", ["root", "-g"]);
+  const npmGlobalRoot = npmRoot.ok ? npmRoot.output.split(/\r?\n/)[0]?.trim() : "";
   const candidates = [
     path.join(path.dirname(process.execPath), "node_modules", "@tobilu", "qmd", "dist", "cli", "qmd.js"),
     path.join(getUserHome(), "AppData", "Roaming", "npm", "node_modules", "@tobilu", "qmd", "dist", "cli", "qmd.js"),
+    path.join(getUserHome(), ".npm-global", "lib", "node_modules", "@tobilu", "qmd", "dist", "cli", "qmd.js"),
+    path.join("/usr/local/lib/node_modules", "@tobilu", "qmd", "dist", "cli", "qmd.js"),
+    path.join("/opt/homebrew/lib/node_modules", "@tobilu", "qmd", "dist", "cli", "qmd.js"),
   ];
+
+  if (npmGlobalRoot) {
+    candidates.push(path.join(npmGlobalRoot, "@tobilu", "qmd", "dist", "cli", "qmd.js"));
+  }
 
   return [...new Set(candidates)];
 }

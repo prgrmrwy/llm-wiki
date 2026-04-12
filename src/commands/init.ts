@@ -1,5 +1,6 @@
 import { checkbox, confirm, input, select } from "@inquirer/prompts";
 import { spawn } from "node:child_process";
+import os from "node:os";
 import path from "node:path";
 import { buildEnvironmentChecks, printChecks } from "./health.js";
 import { upsertRegistryEntry } from "../registry.js";
@@ -24,6 +25,11 @@ import { ensureNoExistingWiki } from "../utils/wiki.js";
 
 interface InitCommandOptions {
   skipPrompts: boolean;
+}
+
+interface RepairableCheck {
+  label: string;
+  detail: string;
 }
 
 const DEFAULT_LANGUAGE_PREFERENCE = "中文";
@@ -118,10 +124,22 @@ async function runInitPreflight(options: InitCommandOptions, cwd: string): Promi
   console.log("\nStep 1/4 环境预检");
   console.log(`目标目录: ${cwd}`);
   console.log("先检查当前机器是否具备推荐运行条件，再继续初始化。");
-  const envChecks = await buildEnvironmentChecks();
+  printPlatformAssessment();
+
+  let envChecks = await buildEnvironmentChecks();
   printChecks(envChecks);
 
-  const failedChecks = envChecks.filter((check) => !check.ok);
+  let failedChecks = envChecks.filter((check) => !check.ok);
+  if (failedChecks.length > 0 && !options.skipPrompts) {
+    const repaired = await maybeAutoResolveEnvironment(failedChecks);
+    if (repaired) {
+      console.log("\nEnvironment（自动修复后复检）");
+      envChecks = await buildEnvironmentChecks();
+      printChecks(envChecks);
+      failedChecks = envChecks.filter((check) => !check.ok);
+    }
+  }
+
   if (failedChecks.length === 0) {
     return;
   }
@@ -173,14 +191,139 @@ function getRepairSteps(label: string): string[] {
     case "Claude CLI":
       return ["安装命令：`npm install -g @anthropic-ai/claude-code`"];
     case "Claude Login":
-      return ["运行 `claude` 完成登录。"];
+      return ["运行 `claude auth login` 完成登录。"];
     case "qmd":
-      return ["安装命令：`bun install -g @tobilu/qmd`", "Windows 上如 GPU embedding 不稳定，可先走 CPU 或 text-only fallback。"];
+      return ["安装命令：`npm install -g @tobilu/qmd`", "Windows 上如 embedding 不稳定，可直接接受 text-only fallback；macOS 通常可直接使用 CPU 路径。"]; 
     case "Obsidian CLI":
       return ["打开 Obsidian 桌面应用，在应用内启用官方命令行工具（命令通常为 `obsidian`）。"];
     default:
       return [];
   }
+}
+
+function printPlatformAssessment(): void {
+  const platform = os.platform();
+  const arch = os.arch();
+
+  console.log(`系统识别: ${formatPlatformName(platform)} (${arch})`);
+  for (const note of getPlatformImpactNotes(platform)) {
+    console.log(`- ${note}`);
+  }
+}
+
+function formatPlatformName(platform: NodeJS.Platform): string {
+  switch (platform) {
+    case "win32":
+      return "Windows";
+    case "darwin":
+      return "macOS";
+    default:
+      return platform;
+  }
+}
+
+function getPlatformImpactNotes(platform: NodeJS.Platform): string[] {
+  switch (platform) {
+    case "win32":
+      return [
+        "qmd 将优先走 PATH，其次尝试 npm 全局模块路径；embedding 栈不稳定时会自动退回 text-only。",
+        "Obsidian CLI 即使已启用，也可能需要重开终端后才能进入 PATH。",
+      ];
+    case "darwin":
+      return [
+        "Claude 登录状态优先通过 `claude auth status` 检测，兼容 Keychain 存储的认证。",
+        "qmd 将同时探测 PATH、`npm root -g` 和常见 Homebrew/npm 全局路径。",
+      ];
+    default:
+      return [
+        "当前主要验证了 Windows 和 macOS；其他平台会尽量探测 PATH 与 npm 全局安装，但未做专项验证。",
+      ];
+  }
+}
+
+async function maybeAutoResolveEnvironment(failedChecks: RepairableCheck[]): Promise<boolean> {
+  const actions = failedChecks
+    .map((check) => getAutoRepairAction(check.label))
+    .filter((action): action is NonNullable<ReturnType<typeof getAutoRepairAction>> => action !== null);
+
+  if (actions.length === 0) {
+    return false;
+  }
+
+  console.log("\nAuto Fix");
+  for (const action of actions) {
+    console.log(`- ${action.label}: ${action.summary}`);
+  }
+
+  const shouldRepair = await confirm({
+    message: "是否现在自动处理可修复的环境缺项？",
+    default: true,
+  });
+  if (!shouldRepair) {
+    return false;
+  }
+
+  for (const action of actions) {
+    console.log(`\n[Auto Fix] ${action.label}`);
+    await action.run();
+  }
+
+  return true;
+}
+
+function getAutoRepairAction(label: string): { label: string; summary: string; run: () => Promise<void> } | null {
+  switch (label) {
+    case "Claude CLI":
+      return {
+        label,
+        summary: "通过 npm 全局安装 Claude Code CLI。",
+        run: () => installGlobalNpmPackage("@anthropic-ai/claude-code"),
+      };
+    case "Claude Login":
+      return {
+        label,
+        summary: "启动 `claude auth login` 完成交互式登录。",
+        run: () => runInteractiveCommand("claude", ["auth", "login"]),
+      };
+    case "qmd":
+      return {
+        label,
+        summary: "通过 npm 全局安装 qmd。",
+        run: () => installGlobalNpmPackage("@tobilu/qmd"),
+      };
+    default:
+      return null;
+  }
+}
+
+async function installGlobalNpmPackage(packageName: string): Promise<void> {
+  const npmInstalled = checkCommand("npm", ["--version"]);
+  if (!npmInstalled.ok) {
+    throw new Error(`未检测到 npm，无法自动安装 ${packageName}。`);
+  }
+
+  await runInteractiveCommand("npm", ["install", "-g", packageName]);
+}
+
+async function runInteractiveCommand(command: string, args: string[]): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(command, args, {
+      stdio: "inherit",
+      windowsHide: false,
+    });
+
+    child.on("error", (error) => {
+      reject(new Error(`${command} 无法启动：${error.message}`));
+    });
+
+    child.on("exit", (code) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+      reject(new Error(`${command} ${args.join(" ")} exited with code ${code ?? "unknown"}.`));
+    });
+  });
 }
 
 function printGettingStarted(wikiName: string): void {
