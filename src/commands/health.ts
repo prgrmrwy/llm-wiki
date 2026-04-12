@@ -35,9 +35,7 @@ export async function runHealthCommand(): Promise<void> {
 export async function buildEnvironmentChecks(): Promise<CheckRow[]> {
   const claudeInstalled = checkCommand("claude", ["--version"]);
   const qmdInstalled = await isQmdAvailable();
-  const obsidianCommandInstalled = checkCommand("obsidian", ["--help"]);
-  const legacyObsidianCliInstalled = checkCommand("obsidian-cli", ["--help"]);
-  const obsidianCliInstalled = obsidianCommandInstalled.ok || legacyObsidianCliInstalled.ok;
+  const obsidianCliCheck = detectObsidianCli();
   const claudeAuthCandidates = [
     path.join(getUserHome(), ".claude", ".credentials.json"),
     path.join(getUserHome(), ".config", "claude-code", "auth.json"),
@@ -63,9 +61,9 @@ export async function buildEnvironmentChecks(): Promise<CheckRow[]> {
     },
     {
       label: "Obsidian CLI",
-      ok: obsidianCliInstalled,
-      detail: obsidianCliInstalled
-        ? "已安装"
+      ok: obsidianCliCheck.ok,
+      detail: obsidianCliCheck.ok
+        ? obsidianCliCheck.detail
         : "必需项缺失；请在 Obsidian 中启用官方命令行工具（命令名通常为 `obsidian`）",
     },
     {
@@ -74,6 +72,35 @@ export async function buildEnvironmentChecks(): Promise<CheckRow[]> {
       detail: "无法程序化检测，请手动确认桌面应用已安装",
     },
   ];
+}
+
+function detectObsidianCli(): { ok: boolean; detail: string } {
+  const officialCli = checkCommand("obsidian", ["--help"]);
+  if (officialCli.ok) {
+    return { ok: true, detail: "已安装" };
+  }
+
+  const legacyCli = checkCommand("obsidian-cli", ["--help"]);
+  if (legacyCli.ok) {
+    return { ok: true, detail: "已安装（legacy obsidian-cli）" };
+  }
+
+  const combinedOutput = `${officialCli.output}\n${legacyCli.output}`.trim();
+  if (combinedOutput.includes("The CLI is unable to find Obsidian")) {
+    return { ok: true, detail: "已安装；当前需要桌面应用处于运行状态" };
+  }
+
+  const whereOfficial = checkCommand("where.exe", ["obsidian"]);
+  if (whereOfficial.ok) {
+    return { ok: true, detail: "已安装" };
+  }
+
+  const whereLegacy = checkCommand("where.exe", ["obsidian-cli"]);
+  if (whereLegacy.ok) {
+    return { ok: true, detail: "已安装（legacy obsidian-cli）" };
+  }
+
+  return { ok: false, detail: "" };
 }
 
 async function buildInstanceChecks(wikiRoot: string): Promise<CheckRow[]> {

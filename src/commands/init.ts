@@ -1,4 +1,5 @@
 import { checkbox, confirm, input, select } from "@inquirer/prompts";
+import { spawn } from "node:child_process";
 import path from "node:path";
 import { buildEnvironmentChecks, printChecks } from "./health.js";
 import { upsertRegistryEntry } from "../registry.js";
@@ -18,17 +19,27 @@ import {
 } from "../templates/wiki.js";
 import type { TemplateKey } from "../types.js";
 import { ensureDir, writeTextFile } from "../utils/fs.js";
+import { checkCommand } from "../utils/process.js";
 import { ensureNoExistingWiki } from "../utils/wiki.js";
 
 interface InitCommandOptions {
   skipPrompts: boolean;
 }
 
+const CLAUDIAN_RELEASE_BASE_URL = "https://github.com/YishenTu/claudian/releases/latest/download";
+const CLAUDIAN_PLUGIN_FILES = ["main.js", "manifest.json", "styles.css"] as const;
+
 export async function runInitCommand(options: InitCommandOptions): Promise<void> {
   const cwd = process.cwd();
+  printInitBanner(cwd, options);
   await ensureNoExistingWiki(cwd);
 
-  await runInitPreflight(options);
+  await runInitPreflight(options, cwd);
+
+  console.log("\nStep 2/4 采集 wiki 信息");
+  if (!options.skipPrompts) {
+    console.log("将进入引导式交互，逐步确认 wiki 描述、模板和 page types。");
+  }
 
   const wikiName = path.basename(cwd);
   const createdAt = new Date().toISOString();
@@ -76,8 +87,11 @@ export async function runInitCommand(options: InitCommandOptions): Promise<void>
     }
   }
 
+  console.log("\nStep 3/4 写入 wiki 目录结构和控制文件");
   await createWikiStructure(cwd, wikiName, description, template, selectedPageTypes, createdAt);
 
+  console.log("Step 4/4 安装集成并更新全局注册表");
+  await maybeInstallClaudian(cwd, options);
   await upsertRegistryEntry({
     name: wikiName,
     path: cwd,
@@ -88,11 +102,14 @@ export async function runInitCommand(options: InitCommandOptions): Promise<void>
   console.log(`Initialized wiki: ${wikiName}`);
   console.log(`Template: ${templateKey}`);
   console.log(`Path: ${cwd}`);
+  await maybeOpenObsidian(cwd, wikiName, options);
   printGettingStarted(wikiName);
 }
 
-async function runInitPreflight(options: InitCommandOptions): Promise<void> {
-  console.log("Preflight");
+async function runInitPreflight(options: InitCommandOptions, cwd: string): Promise<void> {
+  console.log("\nStep 1/4 环境预检");
+  console.log(`目标目录: ${cwd}`);
+  console.log("先检查当前机器是否具备推荐运行条件，再继续初始化。");
   const envChecks = await buildEnvironmentChecks();
   printChecks(envChecks);
 
@@ -124,6 +141,12 @@ async function runInitPreflight(options: InitCommandOptions): Promise<void> {
   }
 }
 
+function printInitBanner(cwd: string, options: InitCommandOptions): void {
+  console.log("llm-wiki init");
+  console.log(`将在当前目录初始化 wiki: ${cwd}`);
+  console.log(options.skipPrompts ? "模式: 快速初始化 (--skip)" : "模式: 引导式交互初始化");
+}
+
 function printSetupGuidance(failedChecks: Array<{ label: string; detail: string }>): void {
   for (const check of failedChecks) {
     console.log(`- ${check.label}: ${check.detail}`);
@@ -133,9 +156,8 @@ function printSetupGuidance(failedChecks: Array<{ label: string; detail: string 
   }
 
   console.log("- `llm-wiki repair`: 仅用于 init 之后补齐缺失的 wiki 元文件，不负责安装环境依赖。");
-  console.log("- Claudian: `llm-wiki init` 不会自动下载插件。请在 Obsidian 中手动安装 Claudian。");
+  console.log("- Claudian: init 阶段可直接安装到 `.obsidian/plugins/claudian/`；如跳过，也可稍后手动安装。");
   console.log("  GitHub: https://github.com/YishenTu/claudian");
-  console.log("  安装后确认插件位于 `.obsidian/plugins/claudian/`。");
 }
 
 function getRepairSteps(label: string): string[] {
@@ -157,8 +179,89 @@ function printGettingStarted(wikiName: string): void {
   console.log("\nGetting Started");
   console.log("1. 运行 `llm-wiki health`，确认环境和实例状态。");
   console.log("2. 如果 health 或使用中发现元文件缺失，运行 `llm-wiki repair`。");
-  console.log("3. 用 Obsidian 打开当前目录作为 vault；如未安装 Claudian，请参考 https://github.com/YishenTu/claudian 。");
+  console.log("3. 用 Obsidian 打开当前目录作为 vault；如未安装 Claudian，可重新运行 init 或手动安装。");
   console.log(`4. 运行 \`llm-wiki skill install ${wikiName}\`，然后开始使用 \`/wiki-ingest\`、\`/wiki-query\`、\`/wiki-lint\`。`);
+}
+
+async function maybeInstallClaudian(rootDir: string, options: InitCommandOptions): Promise<void> {
+  const pluginDir = path.join(rootDir, ".obsidian", "plugins", "claudian");
+  const shouldInstall = options.skipPrompts
+    ? false
+    : await confirm({
+        message: "是否下载并安装 Claudian 到当前 vault？",
+        default: true,
+      });
+
+  if (!shouldInstall) {
+    console.log("Claudian: 跳过安装。");
+    return;
+  }
+
+  console.log("Claudian: 开始下载 GitHub release...");
+
+  try {
+    await ensureDir(pluginDir);
+
+    for (const fileName of CLAUDIAN_PLUGIN_FILES) {
+      const response = await fetch(`${CLAUDIAN_RELEASE_BASE_URL}/${fileName}`);
+      if (!response.ok) {
+        throw new Error(`下载 ${fileName} 失败（HTTP ${response.status}）`);
+      }
+
+      const content = Buffer.from(await response.arrayBuffer());
+      await writeTextFile(path.join(pluginDir, fileName), content.toString("utf8"));
+    }
+
+    console.log(`Claudian: 已安装到 ${pluginDir}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.log(`Claudian: 安装失败，已保留 wiki 初始化结果。${message}`);
+    console.log("可稍后手动安装，或重新运行 init / 未来的独立安装命令。");
+  }
+}
+
+async function maybeOpenObsidian(rootDir: string, wikiName: string, options: InitCommandOptions): Promise<void> {
+  const obsidianCli = resolveObsidianCliCommand();
+  if (!obsidianCli) {
+    console.log("\nObsidian");
+    console.log("未检测到官方 `obsidian` CLI，跳过自动打开。");
+    return;
+  }
+
+  const shouldOpen = options.skipPrompts
+    ? false
+    : await confirm({
+        message: `是否立即在 Obsidian 中打开当前 wiki（${wikiName}）？`,
+        default: true,
+      });
+
+  if (!shouldOpen) {
+    return;
+  }
+
+  const child = spawn(obsidianCli.command, obsidianCli.args, {
+    cwd: rootDir,
+    detached: true,
+    stdio: "ignore",
+    windowsHide: true,
+  });
+  child.unref();
+
+  console.log("\nObsidian");
+  console.log("已请求按当前目录打开 Obsidian，并脱离 init 进程运行。");
+  console.log("后续即使中断终端里的 init 进程，Obsidian 也不会随之关闭。");
+}
+
+function resolveObsidianCliCommand(): { command: string; args: string[] } | null {
+  const officialCli = checkCommand("obsidian", ["--help"]);
+  if (officialCli.ok) {
+    return {
+      command: "obsidian",
+      args: ["open", "path=wiki/index.md"],
+    };
+  }
+
+  return null;
 }
 
 async function createWikiStructure(
