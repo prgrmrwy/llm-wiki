@@ -10,6 +10,7 @@ interface ConfigShape {
   root?: string;
   template?: TemplateKey;
   created?: string;
+  languagePreference?: string;
 }
 
 export async function loadInitRenderContext(rootDir: string): Promise<InitRenderContext> {
@@ -29,6 +30,7 @@ export async function loadInitRenderContext(rootDir: string): Promise<InitRender
     absoluteRoot: rootDir,
     cliCommand: getCliCommand(),
     domainDescription: extractDomainDescription(schemaText) || `${template.title} workspace.`,
+    languagePreference: config.languagePreference || "中文",
     template,
     pageTypeNames,
     createdAt: config.created || new Date().toISOString(),

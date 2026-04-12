@@ -26,6 +26,7 @@ interface InitCommandOptions {
   skipPrompts: boolean;
 }
 
+const DEFAULT_LANGUAGE_PREFERENCE = "中文";
 const CLAUDIAN_RELEASE_BASE_URL = "https://github.com/YishenTu/claudian/releases/latest/download";
 const CLAUDIAN_PLUGIN_FILES = ["main.js", "manifest.json", "styles.css"] as const;
 
@@ -48,6 +49,13 @@ export async function runInitCommand(options: InitCommandOptions): Promise<void>
     : await input({
         message: "描述这个 wiki 的领域或主题：",
         validate: (value) => (value.trim().length > 0 ? true : "请输入领域描述。"),
+      });
+  const languagePreference = options.skipPrompts
+    ? DEFAULT_LANGUAGE_PREFERENCE
+    : await input({
+        message: "默认语言偏好（Claude 将默认用它整理内容）：",
+        default: DEFAULT_LANGUAGE_PREFERENCE,
+        validate: (value) => (value.trim().length > 0 ? true : "请输入默认语言偏好。"),
       });
 
   const suggestedTemplate = suggestTemplateKey(description);
@@ -88,7 +96,7 @@ export async function runInitCommand(options: InitCommandOptions): Promise<void>
   }
 
   console.log("\nStep 3/4 写入 wiki 目录结构和控制文件");
-  await createWikiStructure(cwd, wikiName, description, template, selectedPageTypes, createdAt);
+  await createWikiStructure(cwd, wikiName, description, languagePreference.trim(), template, selectedPageTypes, createdAt);
 
   console.log("Step 4/4 安装集成并更新全局注册表");
   await maybeInstallClaudian(cwd, options);
@@ -180,6 +188,7 @@ function printGettingStarted(wikiName: string): void {
   console.log("1. 运行 `llm-wiki health`，确认环境和实例状态。");
   console.log("2. 如果 health 或使用中发现元文件缺失，运行 `llm-wiki repair`。");
   console.log("3. 用 Obsidian 打开当前目录作为 vault；如未安装 Claudian，可重新运行 init 或手动安装。");
+  console.log("   如果刚在 Obsidian 中启用官方 CLI，但当前终端仍识别不到 `obsidian`，请重新打开一个终端 tab / 窗口后再试。");
   console.log(`4. 运行 \`llm-wiki skill install ${wikiName}\`，然后开始使用 \`/wiki-ingest\`、\`/wiki-query\`、\`/wiki-lint\`。`);
 }
 
@@ -225,6 +234,7 @@ async function maybeOpenObsidian(rootDir: string, wikiName: string, options: Ini
   if (!obsidianCli) {
     console.log("\nObsidian");
     console.log("未检测到官方 `obsidian` CLI，跳过自动打开。");
+    console.log("如果你刚在 Obsidian 里启用了官方 CLI，当前终端可能还没有拿到新的 PATH；请重新打开一个终端 tab / 窗口后再试。");
     return;
   }
 
@@ -268,6 +278,7 @@ async function createWikiStructure(
   rootDir: string,
   wikiName: string,
   description: string,
+  languagePreference: string,
   template: (typeof schemaTemplates)[TemplateKey],
   pageTypeNames: string[],
   createdAt: string,
@@ -277,6 +288,7 @@ async function createWikiStructure(
     absoluteRoot: rootDir,
     cliCommand: `node ${JSON.stringify((process.argv[1] || "dist/index.js").replace(/\\/g, "/"))}`,
     domainDescription: description,
+    languagePreference,
     template,
     pageTypeNames,
     createdAt,

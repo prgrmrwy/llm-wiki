@@ -6,6 +6,7 @@ export interface InitRenderContext {
   absoluteRoot: string;
   cliCommand: string;
   domainDescription: string;
+  languagePreference: string;
   template: SchemaTemplate;
   pageTypeNames: string[];
   createdAt: string;
@@ -17,6 +18,7 @@ export function renderConfigYaml(context: InitRenderContext): string {
     `root: ${context.absoluteRoot.replace(/\\/g, "/")}`,
     `template: ${context.template.key}`,
     `created: ${context.createdAt}`,
+    `languagePreference: ${context.languagePreference}`,
     `vault: .`,
     `contentDir: wiki`,
     "",
@@ -67,12 +69,14 @@ export function renderClaudeMd(context: InitRenderContext): string {
     "# Claude Wiki Agent",
     "",
     `你是 \`${context.wikiName}\` 的专属领域 agent。领域说明：${context.domainDescription}`,
+    `默认语言偏好：${context.languagePreference}。除非用户明确要求使用其他语言，否则整理内容、创建页面、更新摘要、补全上下文和输出分析时都使用该语言。`,
     "",
     "## Startup",
     "- 工作目录固定为项目根目录，不要把 `wiki/` 单独当作工作根。",
     "- Obsidian Vault 根目录就是当前项目根；知识内容主要位于 `wiki/`。",
     `- 启动后优先读取 \`${path.posix.join(".wiki", "context.md")}\`，理解当前聚焦、进行中任务、知识空白和上次操作。`,
     `- 在创建或更新页面前，先阅读 \`${path.posix.join(".wiki", "schema.md")}\` 和 \`${path.posix.join("wiki", "index.md")}\`。`,
+    `- 默认按“${context.languagePreference}”整理新内容和改写已有内容；只有在源材料或用户要求使其他语言更合适时再切换。`,
     "",
     "## Skills",
     "- `/wiki-ingest`: 两阶段 ingest pipeline，创建或更新 pages，并同步 index.md、log.md、context.md。",
@@ -110,6 +114,8 @@ export function renderSkillMd(context: InitRenderContext): string {
     "",
     `This skill covers the domain: ${context.domainDescription}`,
     "",
+    `Default language preference: ${context.languagePreference}. Unless the user explicitly requests another language, organize notes and answers in this language.`,
+    "",
     "## Query Flow",
     `1. Run \`${context.cliCommand} query "<question>" --json\`.`,
     "2. Read the returned pages before answering.",
@@ -141,6 +147,7 @@ export function renderWikiIngestCommand(context: InitRenderContext): string {
     `你正在维护 wiki \`${context.wikiName}\`。目标领域：${context.domainDescription}`,
     "",
     "工作约定：当前项目根目录就是 Obsidian Vault 和 Claude/Claudian 的工作根，知识内容位于 `wiki/`。",
+    `默认语言偏好：${context.languagePreference}。除非用户明确要求其他语言，否则新建页面、更新页面、索引摘要、日志和上下文都使用该语言。`,
     "",
     "处理输入 source 时严格遵循以下流程：",
     "1. 先读取 `wiki/index.md`、`.wiki/schema.md`、`.wiki/context.md`，理解已有 pages、当前 schema 和当前工作状态。",
@@ -169,6 +176,7 @@ export function renderWikiQueryCommand(context: InitRenderContext): string {
     `你正在为 wiki \`${context.wikiName}\` 回答领域问题。`,
     "",
     "工作约定：当前项目根目录就是 Obsidian Vault 和 Claude/Claudian 的工作根，知识内容位于 `wiki/`。",
+    `默认语言偏好：${context.languagePreference}。除非用户明确要求其他语言，否则回答、归档分析、索引摘要和日志都使用该语言。`,
     "",
     "处理查询时严格遵循以下流程：",
     `1. 先运行 \`${context.cliCommand} query "<question>" --json\` 获取相关 pages。`,
