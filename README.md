@@ -188,7 +188,8 @@ Cross-platform notes:
 - primary validation targets are Windows and macOS
 - `Claude Login` is detected via `claude auth status` first, which covers macOS Keychain-backed auth
 - `qmd` resolution checks PATH, `npm root -g`, and common global install locations
-- for manual `qmd` installation, prefer `npm install -g @tobilu/qmd`
+- this repo pins npm to the official registry through `.npmrc`
+- for manual `qmd` installation, prefer `npm install -g @tobilu/qmd --registry=https://registry.npmjs.org/`
 
 Current search behavior:
 

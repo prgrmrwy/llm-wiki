@@ -5,6 +5,8 @@ import { exists, getUserHome, pathHasWiki } from "../utils/fs.js";
 import { checkCommand } from "../utils/process.js";
 import { detectWikiRoot } from "../utils/wiki.js";
 
+const OFFICIAL_NPM_REGISTRY = "https://registry.npmjs.org/";
+
 export interface CheckRow {
   label: string;
   ok: boolean;
@@ -42,7 +44,7 @@ export async function buildEnvironmentChecks(): Promise<CheckRow[]> {
     {
       label: "Claude CLI",
       ok: claudeInstalled.ok,
-      detail: claudeInstalled.ok ? "已安装" : "缺失，安装：npm install -g @anthropic-ai/claude-code",
+      detail: claudeInstalled.ok ? "已安装" : `缺失，安装：npm install -g @anthropic-ai/claude-code --registry=${OFFICIAL_NPM_REGISTRY}`,
     },
     {
       label: "Claude Login",
@@ -52,7 +54,7 @@ export async function buildEnvironmentChecks(): Promise<CheckRow[]> {
     {
       label: "qmd",
       ok: qmdInstalled,
-      detail: qmdInstalled ? "已安装" : "缺失，安装：npm install -g @tobilu/qmd",
+      detail: qmdInstalled ? "已安装" : `缺失，安装：npm install -g @tobilu/qmd --registry=${OFFICIAL_NPM_REGISTRY}`,
     },
     {
       label: "Obsidian CLI",

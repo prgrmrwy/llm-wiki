@@ -35,6 +35,7 @@ interface RepairableCheck {
 const DEFAULT_LANGUAGE_PREFERENCE = "中文";
 const CLAUDIAN_RELEASE_BASE_URL = "https://github.com/YishenTu/claudian/releases/latest/download";
 const CLAUDIAN_PLUGIN_FILES = ["main.js", "manifest.json", "styles.css"] as const;
+const OFFICIAL_NPM_REGISTRY = "https://registry.npmjs.org/";
 
 export async function runInitCommand(options: InitCommandOptions): Promise<void> {
   const cwd = process.cwd();
@@ -189,11 +190,11 @@ function printSetupGuidance(failedChecks: Array<{ label: string; detail: string 
 function getRepairSteps(label: string): string[] {
   switch (label) {
     case "Claude CLI":
-      return ["安装命令：`npm install -g @anthropic-ai/claude-code`"];
+      return [`安装命令：\`npm install -g @anthropic-ai/claude-code --registry=${OFFICIAL_NPM_REGISTRY}\``];
     case "Claude Login":
       return ["运行 `claude auth login` 完成登录。"];
     case "qmd":
-      return ["安装命令：`npm install -g @tobilu/qmd`", "Windows 上如 embedding 不稳定，可直接接受 text-only fallback；macOS 通常可直接使用 CPU 路径。"]; 
+      return [`安装命令：\`npm install -g @tobilu/qmd --registry=${OFFICIAL_NPM_REGISTRY}\``, "Windows 上如 embedding 不稳定，可直接接受 text-only fallback；macOS 通常可直接使用 CPU 路径。"]; 
     case "Obsidian CLI":
       return ["打开 Obsidian 桌面应用，在应用内启用官方命令行工具（命令通常为 `obsidian`）。"];
     default:
@@ -302,12 +303,18 @@ async function installGlobalNpmPackage(packageName: string): Promise<void> {
     throw new Error(`未检测到 npm，无法自动安装 ${packageName}。`);
   }
 
-  await runInteractiveCommand("npm", ["install", "-g", packageName]);
+  await runInteractiveCommand("npm", ["install", "-g", packageName, "--registry", OFFICIAL_NPM_REGISTRY], {
+    npm_config_registry: OFFICIAL_NPM_REGISTRY,
+  });
 }
 
-async function runInteractiveCommand(command: string, args: string[]): Promise<void> {
+async function runInteractiveCommand(command: string, args: string[], extraEnv: NodeJS.ProcessEnv = {}): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     const child = spawn(command, args, {
+      env: {
+        ...process.env,
+        ...extraEnv,
+      },
       stdio: "inherit",
       windowsHide: false,
     });

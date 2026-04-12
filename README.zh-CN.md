@@ -188,7 +188,8 @@ node /path/to/llm-wiki/dist/index.js <command>
 - 主测平台为 Windows 和 macOS
 - `Claude Login` 优先通过 `claude auth status` 检测，兼容 macOS Keychain
 - `qmd` 会同时探测 PATH、`npm root -g` 和常见全局安装目录
-- 如需手动安装 `qmd`，优先使用 `npm install -g @tobilu/qmd`
+- 仓库根 `.npmrc` 已固定使用 npm 官方 registry
+- 如需手动安装 `qmd`，优先使用 `npm install -g @tobilu/qmd --registry=https://registry.npmjs.org/`
 
 当前搜索行为：
 
