@@ -133,7 +133,7 @@ For the intended workflow, these tools fit together:
 - `llm-wiki`
   Initializes the workspace, generates control files, and provides the local wiki workflow commands.
 - `qmd`
-  Provides local search for markdown content.
+  Provides optional accelerated local search for markdown content.
 
 In practice, the ideal chain looks like this:
 
@@ -141,7 +141,7 @@ In practice, the ideal chain looks like this:
 Obsidian -> Claudian -> Claude Code -> llm-wiki -> qmd
 ```
 
-Only part of this chain is strictly required to create a wiki. But this is the intended full setup if you want the complete human + AI workflow.
+Only part of this chain is strictly required to create a wiki. `qmd` is optional; when it is unavailable, the CLI falls back to local text search.
 
 ## Using llm-wiki
 
@@ -178,7 +178,7 @@ What each one is for:
 Environment notes:
 
 - Node.js 20+
-- `@tobilu/qmd`
+- `@tobilu/qmd` (optional)
 - Obsidian
 - Claudian
 - Claude Code CLI
@@ -194,6 +194,7 @@ Cross-platform notes:
 Current search behavior:
 
 - `qmd` is used when available
+- if `qmd` is missing, the CLI falls back to local text search
 - if `qmd` embedding fails, the CLI falls back to local text search
 - on Windows, GPU/CUDA embedding may be unstable depending on the local `qmd` / `node-llama-cpp` stack
 - GPU embedding should be treated as optional acceleration, not a hard requirement

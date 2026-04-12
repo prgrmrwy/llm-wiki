@@ -52,7 +52,7 @@ export async function runInitCommand(options: InitCommandOptions): Promise<void>
   const wikiName = path.basename(cwd);
   const createdAt = new Date().toISOString();
   const description = options.skipPrompts
-    ? "General-purpose learning wiki."
+    ? "通用学习型 wiki。"
     : await input({
         message: "描述这个 wiki 的领域或主题：",
         validate: (value) => (value.trim().length > 0 ? true : "请输入领域描述。"),
@@ -130,14 +130,14 @@ async function runInitPreflight(options: InitCommandOptions, cwd: string): Promi
   let envChecks = await buildEnvironmentChecks();
   printChecks(envChecks);
 
-  let failedChecks = envChecks.filter((check) => !check.ok);
+  let failedChecks = envChecks.filter((check) => !check.ok && !check.optional);
   if (failedChecks.length > 0 && !options.skipPrompts) {
     const repaired = await maybeAutoResolveEnvironment(failedChecks);
     if (repaired) {
       console.log("\nEnvironment（自动修复后复检）");
       envChecks = await buildEnvironmentChecks();
       printChecks(envChecks);
-      failedChecks = envChecks.filter((check) => !check.ok);
+      failedChecks = envChecks.filter((check) => !check.ok && !check.optional);
     }
   }
 
@@ -465,10 +465,10 @@ async function createWikiStructure(
   }
 
   await writeTextFile(path.join(rootDir, ".wiki", "config.yaml"), renderConfigYaml(context));
-  await writeTextFile(path.join(rootDir, ".wiki", "schema.md"), renderSchemaMarkdown(description, template, pageTypeNames));
-  await writeTextFile(path.join(rootDir, ".wiki", "context.md"), `${renderContextMarkdown()}\n`);
-  await writeTextFile(path.join(rootDir, "wiki", "index.md"), renderIndexMarkdown());
-  await writeTextFile(path.join(rootDir, "wiki", "log.md"), renderLogMarkdown());
+  await writeTextFile(path.join(rootDir, ".wiki", "schema.md"), renderSchemaMarkdown(description, template, pageTypeNames, languagePreference));
+  await writeTextFile(path.join(rootDir, ".wiki", "context.md"), `${renderContextMarkdown(context)}\n`);
+  await writeTextFile(path.join(rootDir, "wiki", "index.md"), renderIndexMarkdown(context));
+  await writeTextFile(path.join(rootDir, "wiki", "log.md"), renderLogMarkdown(context));
   await writeTextFile(path.join(rootDir, ".obsidian", "app.json"), `${renderObsidianAppConfig()}\n`);
   await writeTextFile(path.join(rootDir, "CLAUDE.md"), `${renderClaudeMd(context)}\n`);
   await writeTextFile(path.join(rootDir, "AGENTS.md"), `${renderAgentsMd(context)}\n`);

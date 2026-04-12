@@ -29,7 +29,7 @@ export async function loadInitRenderContext(rootDir: string): Promise<InitRender
     wikiName: config.name || path.basename(rootDir),
     absoluteRoot: rootDir,
     cliCommand: getCliCommand(),
-    domainDescription: extractDomainDescription(schemaText) || `${template.title} workspace.`,
+    domainDescription: extractDomainDescription(schemaText) || defaultDomainDescription(template.title, config.languagePreference || "中文"),
     languagePreference: config.languagePreference || "中文",
     template,
     pageTypeNames,
@@ -68,8 +68,14 @@ async function safeRead(targetPath: string): Promise<string> {
 }
 
 function extractDomainDescription(schemaText: string): string | null {
-  const match = schemaText.match(/## Domain Description\s+([\s\S]*?)(?:\n## |\s*$)/);
+  const match = schemaText.match(/## (?:Domain Description|领域描述)\s+([\s\S]*?)(?:\n## |\s*$)/);
   return match?.[1]?.trim() || null;
+}
+
+function defaultDomainDescription(templateTitle: string, languagePreference: string): string {
+  return /中文|汉语|汉文|chinese|zh/i.test(languagePreference)
+    ? `${templateTitle} 工作区。`
+    : `${templateTitle} workspace.`;
 }
 
 function extractPageTypes(schemaText: string, fallback: string[]): string[] {

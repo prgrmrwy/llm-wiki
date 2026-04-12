@@ -7,16 +7,18 @@ TBD - created by archiving change llm-wiki-system. Update Purpose after archive.
 `llm-wiki health` SHALL 检查全局工具依赖，对每项给出 ✓ / ✗ 状态和修复指令。
 
 #### Scenario: 所有依赖已就绪
-- **WHEN** claude CLI、qmd、Obsidian CLI 均已安装且 claude 已登录
+- **WHEN** claude CLI、Obsidian CLI 均已安装且 claude 已登录，且可选的 qmd 已安装
 - **THEN** 环境层所有项显示 ✓
 
 #### Scenario: 缺少 qmd
 - **WHEN** qmd 未安装
-- **THEN** 显示 ✗ 并输出安装命令：`bun install -g @tobilu/qmd`
+- **THEN** 显示其为可选增强项，而不是阻塞错误
+- **AND** 明确说明查询将退回本地文本搜索
+- **AND** 如用户需要安装，输出安装命令：`npm install -g @tobilu/qmd --registry=https://registry.npmjs.org/`
 
 #### Scenario: claude CLI 未登录
 - **WHEN** claude 已安装但未认证
-- **THEN** 显示 ✗ 并提示：`claude`（首次运行会引导登录）
+- **THEN** 显示 ✗ 并提示先执行 `claude auth status`，未登录时再执行 `claude auth login`
 
 #### Scenario: Obsidian App 检测
 - **WHEN** 执行 health 检查
@@ -56,7 +58,11 @@ health 检查结果 SHALL 以链路形式展示，清晰表达从 Obsidian → C
 - **WHEN** 链路中某环节失败
 - **THEN** 该环节及其下游标记为不可用，帮助用户快速定位瓶颈
 
+#### Scenario: qmd 缺失但主链路可用
+- **WHEN** qmd 未安装，但 Obsidian、Claudian、Claude CLI 和 wiki skills 均已就绪
+- **THEN** 主链路仍视为可用
+- **AND** qmd 仅标记为 optional
+
 #### Scenario: 全部通过
 - **WHEN** 所有检查项均 ✓
 - **THEN** 输出"Wiki 已就绪，可通过项目根目录启动的 Obsidian + Claudian 或 Codex CLI 开始使用"
-

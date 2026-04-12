@@ -11,6 +11,7 @@ export interface CheckRow {
   label: string;
   ok: boolean;
   detail: string;
+  optional?: boolean;
 }
 
 export async function runHealthCommand(): Promise<void> {
@@ -54,7 +55,10 @@ export async function buildEnvironmentChecks(): Promise<CheckRow[]> {
     {
       label: "qmd",
       ok: qmdInstalled,
-      detail: qmdInstalled ? "已安装" : `缺失，安装：npm install -g @tobilu/qmd --registry=${OFFICIAL_NPM_REGISTRY}`,
+      detail: qmdInstalled
+        ? "已安装"
+        : `未安装（可选增强）；将退回本地文本搜索。如需安装：npm install -g @tobilu/qmd --registry=${OFFICIAL_NPM_REGISTRY}`,
+      optional: true,
     },
     {
       label: "Obsidian CLI",
@@ -165,6 +169,7 @@ function detectObsidianCli(): { ok: boolean; detail: string } {
 async function buildInstanceChecks(wikiRoot: string): Promise<CheckRow[]> {
   const context = await loadInitRenderContext(wikiRoot);
   const wikiName = context.wikiName;
+  const qmdInstalled = await isQmdAvailable();
   const projectSkill = path.join(wikiRoot, ".claude", "skills", wikiName, "SKILL.md");
   const userSkill = path.join(getUserHome(), ".claude", "skills", wikiName, "SKILL.md");
   const projectSkillInstalled = await exists(projectSkill);
@@ -224,14 +229,18 @@ async function buildInstanceChecks(wikiRoot: string): Promise<CheckRow[]> {
       ok: hasQmdIndex,
       detail: hasQmdIndex
         ? "检测到 qmd 索引 marker"
-        : "未检测到完整索引状态，运行 `llm-wiki index`",
+        : qmdInstalled
+          ? "未检测到完整索引状态，运行 `llm-wiki index`"
+          : "qmd 未安装；当前可忽略，查询将退回本地文本搜索",
+      optional: !qmdInstalled,
     },
   ];
 }
 
 export function printChecks(checks: CheckRow[]): void {
   for (const check of checks) {
-    console.log(`- ${check.ok ? "✓" : "✗"} ${check.label}: ${check.detail}`);
+    const status = check.ok ? "✓" : check.optional ? "!" : "✗";
+    console.log(`- ${status} ${check.label}: ${check.detail}`);
   }
 }
 
@@ -242,14 +251,16 @@ function printChain(instanceChecks: CheckRow[], envChecks: CheckRow[]): void {
   const claudianReady = Boolean(instanceMap.get("Claudian plugin"));
   const claudeReady = Boolean(envMap.get("Claude CLI")) && Boolean(envMap.get("Claude Login"));
   const skillReady = Boolean(instanceMap.get("Skill install"));
-  const qmdReady = Boolean(envMap.get("qmd")) && Boolean(instanceMap.get("qmd index"));
+  const qmdInstalled = Boolean(envMap.get("qmd"));
+  const qmdIndexed = Boolean(instanceMap.get("qmd index"));
+  const qmdReady = qmdInstalled && qmdIndexed;
 
   const chain = [
     ["Obsidian", true],
     ["Claudian", claudianReady],
     ["Claude CLI", claudeReady],
     ["Wiki Skills", skillReady],
-    ["qmd", qmdReady],
+    ["qmd (optional)", qmdInstalled ? qmdReady : true],
   ] as const;
 
   let upstreamBlocked = false;

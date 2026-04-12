@@ -149,21 +149,37 @@ export function suggestTemplateKey(description: string): TemplateKey {
   return bestMatch;
 }
 
-export function renderSchemaMarkdown(domainDescription: string, template: SchemaTemplate, selectedPageTypes?: string[]): string {
+function prefersChinese(languagePreference: string): boolean {
+  return /中文|汉语|汉文|chinese|zh/i.test(languagePreference);
+}
+
+export function renderSchemaMarkdown(
+  domainDescription: string,
+  template: SchemaTemplate,
+  selectedPageTypes?: string[],
+  languagePreference: string = "中文",
+): string {
   const pageTypes = selectedPageTypes
     ? template.pageTypes.filter((pageType) => selectedPageTypes.includes(pageType.name))
     : template.pageTypes;
+  const zh = prefersChinese(languagePreference);
 
   const lines: string[] = [
     "# Schema",
     "",
-    "## Domain Description",
+    zh ? "## 语言偏好" : "## Language Preference",
+    zh ? `- 默认输出语言：${languagePreference}` : `- Default output language: ${languagePreference}`,
+    zh
+      ? "- 除非用户明确要求其他语言，否则 schema 驱动下生成的新页面、摘要和分析都必须使用该语言。"
+      : "- Unless the user explicitly requests another language, schema-driven pages, summaries, and analyses must use this language.",
+    "",
+    zh ? "## 领域描述" : "## Domain Description",
     domainDescription,
     "",
-    `## Base Template`,
-    `${template.title} (${template.key})`,
+    zh ? "## 基础模板" : "## Base Template",
+    zh ? `${template.title}（${template.key}）` : `${template.title} (${template.key})`,
     "",
-    "## Page Types",
+    zh ? "## 页面类型" : "## Page Types",
   ];
 
   for (const pageType of pageTypes) {
@@ -171,25 +187,25 @@ export function renderSchemaMarkdown(domainDescription: string, template: Schema
     lines.push(`### ${pageType.name}`);
     lines.push(pageType.summary);
     lines.push("");
-    lines.push("Required sections:");
+    lines.push(zh ? "必填章节：" : "Required sections:");
     for (const section of pageType.requiredSections) {
       lines.push(`- ${section}`);
     }
     lines.push("");
-    lines.push("Cross-link guidance:");
+    lines.push(zh ? "交叉链接规则：" : "Cross-link guidance:");
     for (const rule of pageType.linkingRules) {
       lines.push(`- ${rule}`);
     }
   }
 
   lines.push("");
-  lines.push("## Naming Rules");
+  lines.push(zh ? "## 命名规则" : "## Naming Rules");
   for (const rule of template.namingRules) {
     lines.push(`- ${rule}`);
   }
 
   lines.push("");
-  lines.push("## Global Cross-Link Guidance");
+  lines.push(zh ? "## 全局交叉链接规则" : "## Global Cross-Link Guidance");
   for (const rule of template.linkingGuidance) {
     lines.push(`- ${rule}`);
   }

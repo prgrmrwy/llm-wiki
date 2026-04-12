@@ -20,6 +20,16 @@ TBD - created by archiving change llm-wiki-system. Update Purpose after archive.
 - **AND** 输出缺失项和修复建议
 - **AND** 在继续初始化前征询用户是否继续
 
+#### Scenario: qmd 缺失但仍可初始化
+- **WHEN** 预检发现 qmd 未安装
+- **THEN** init 将其视为可选增强项，而不是阻塞条件
+- **AND** 明确说明后续 query 会退回本地文本搜索
+
+#### Scenario: 可自动修复的环境缺项
+- **WHEN** 预检发现 Claude CLI 缺失、Claude 未登录等可自动处理项
+- **THEN** init 提供自动修复入口
+- **AND** 自动修复完成后重新执行环境检查
+
 #### Scenario: 需要手动修复的依赖
 - **WHEN** health 检测到缺失项或存在无法自动修复的环境步骤
 - **THEN** init 明确说明手动修复方法
@@ -37,6 +47,11 @@ TBD - created by archiving change llm-wiki-system. Update Purpose after archive.
 #### Scenario: 用户选择跳过引导
 - **WHEN** 用户在引导时输入 `--skip`
 - **THEN** 使用 `learning` 基础模板写入 `schema.md`，后续可手动修改
+
+#### Scenario: 明确强调语言偏好
+- **WHEN** 用户在 init 过程中设置 `languagePreference`
+- **THEN** 生成的 `schema.md`、`context.md`、`index.md`、`log.md`、`CLAUDE.md`、`SKILL.md` 必须在显著位置明确该语言偏好
+- **AND** 除非用户明确要求其他语言，否则后续生成与归档内容都必须遵守该语言偏好
 
 ---
 

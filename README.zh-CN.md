@@ -133,7 +133,7 @@ node /path/to/llm-wiki/dist/index.js skill install my-wiki
 - `llm-wiki`
   负责初始化工作区、生成控制文件，并提供本地 wiki 工作流命令。
 - `qmd`
-  负责本地 markdown 检索。
+  负责可选的本地 markdown 加速检索。
 
 理想链路大致是：
 
@@ -141,7 +141,7 @@ node /path/to/llm-wiki/dist/index.js skill install my-wiki
 Obsidian -> Claudian -> Claude Code -> llm-wiki -> qmd
 ```
 
-创建 wiki 本身并不要求这条链全部就绪，但如果你希望获得完整的人类 + AI 工作流，这是当前推荐的组合。
+创建 wiki 本身并不要求这条链全部就绪。`qmd` 是可选增强；如果未安装，CLI 会退回本地文本搜索。
 
 ## llm-wiki 用法
 
@@ -178,7 +178,7 @@ node /path/to/llm-wiki/dist/index.js <command>
 环境说明：
 
 - Node.js 20+
-- `@tobilu/qmd`
+- `@tobilu/qmd`（可选）
 - Obsidian
 - Claudian
 - Claude Code CLI
@@ -194,6 +194,7 @@ node /path/to/llm-wiki/dist/index.js <command>
 当前搜索行为：
 
 - 如果 `qmd` 可用，就优先使用它
+- 如果 `qmd` 未安装，CLI 会自动退回本地文本搜索
 - 如果 `qmd` embedding 失败，CLI 会自动退回本地文本搜索
 - 在 Windows 上，GPU/CUDA embedding 是否稳定取决于本机的 `qmd` / `node-llama-cpp` 组合
 - GPU embedding 应视为可选加速，不应视为硬依赖

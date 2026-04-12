@@ -12,6 +12,10 @@ export interface InitRenderContext {
   createdAt: string;
 }
 
+function prefersChinese(languagePreference: string): boolean {
+  return /中文|汉语|汉文|chinese|zh/i.test(languagePreference);
+}
+
 export function renderConfigYaml(context: InitRenderContext): string {
   return [
     `name: ${context.wikiName}`,
@@ -25,41 +29,100 @@ export function renderConfigYaml(context: InitRenderContext): string {
   ].join("\n");
 }
 
-export function renderContextMarkdown(): string {
+function renderLanguagePolicy(context: InitRenderContext): string[] {
+  return prefersChinese(context.languagePreference)
+    ? [
+        "## 语言偏好",
+        `- 默认输出语言：${context.languagePreference}`,
+        "- 除非用户明确要求其他语言，否则新建页面、更新页面、摘要、日志、上下文和分析都必须使用该语言。",
+      ]
+    : [
+        "## Language Preference",
+        `- Default output language: ${context.languagePreference}`,
+        "- Unless the user explicitly requests another language, all new pages, updates, summaries, logs, context, and analyses must use this language.",
+      ];
+}
+
+export function renderContextMarkdown(context: InitRenderContext): string {
+  if (prefersChinese(context.languagePreference)) {
+    return [
+      "# Context",
+      "",
+      "## 语言偏好",
+      `- 默认输出语言：${context.languagePreference}`,
+      "- 除非用户明确要求其他语言，否则本文件及后续归档都使用该语言。",
+      "",
+      "## 当前聚焦",
+      "- 待填写",
+      "",
+      "## 进行中任务",
+      "- 待填写",
+      "",
+      "## 知识空白",
+      "- 待填写",
+      "",
+      "## 上次操作",
+      "- 初始化 wiki",
+      "",
+    ].join("\n");
+  }
+
   return [
     "# Context",
     "",
-    "## 当前聚焦",
-    "- 待填写",
+    "## Language Preference",
+    `- Default output language: ${context.languagePreference}`,
+    "- Unless the user explicitly requests another language, this file and future archival content must use this language.",
     "",
-    "## 进行中任务",
-    "- 待填写",
+    "## Current Focus",
+    "- TBD",
     "",
-    "## 知识空白",
-    "- 待填写",
+    "## In Progress",
+    "- TBD",
     "",
-    "## 上次操作",
-    "- 初始化 wiki",
+    "## Knowledge Gaps",
+    "- TBD",
     "",
-  ].join("\n");
-}
-
-export function renderIndexMarkdown(): string {
-  return [
-    "# Index",
-    "",
-    "<!-- 每页一行摘要；由 wiki-ingest / wiki-query 归档维护 -->",
+    "## Last Action",
+    "- Initialized wiki",
     "",
   ].join("\n");
 }
 
-export function renderLogMarkdown(): string {
-  return [
-    "# Log",
-    "",
-    "<!-- 记录 ingest、query 归档、lint 修复等重要操作 -->",
-    "",
-  ].join("\n");
+export function renderIndexMarkdown(context: InitRenderContext): string {
+  return prefersChinese(context.languagePreference)
+    ? [
+        "# Index",
+        "",
+        `<!-- 默认输出语言：${context.languagePreference} -->`,
+        "<!-- 每页一行摘要；由 wiki-ingest / wiki-query 归档维护 -->",
+        "",
+      ].join("\n")
+    : [
+        "# Index",
+        "",
+        `<!-- Default output language: ${context.languagePreference} -->`,
+        "<!-- One-line summary per page; maintained by wiki-ingest / wiki-query archival flows -->",
+        "",
+      ].join("\n");
+}
+
+export function renderLogMarkdown(context: InitRenderContext): string {
+  return prefersChinese(context.languagePreference)
+    ? [
+        "# Log",
+        "",
+        `<!-- 默认输出语言：${context.languagePreference} -->`,
+        "<!-- 记录 ingest、query 归档、lint 修复等重要操作 -->",
+        "",
+      ].join("\n")
+    : [
+        "# Log",
+        "",
+        `<!-- Default output language: ${context.languagePreference} -->`,
+        "<!-- Record important operations such as ingest, query archival, and lint fixes -->",
+        "",
+      ].join("\n");
 }
 
 export function renderClaudeMd(context: InitRenderContext): string {
@@ -69,7 +132,7 @@ export function renderClaudeMd(context: InitRenderContext): string {
     "# Claude Wiki Agent",
     "",
     `你是 \`${context.wikiName}\` 的专属领域 agent。领域说明：${context.domainDescription}`,
-    `默认语言偏好：${context.languagePreference}。除非用户明确要求使用其他语言，否则整理内容、创建页面、更新摘要、补全上下文和输出分析时都使用该语言。`,
+    ...renderLanguagePolicy(context),
     "",
     "## Startup",
     "- 工作目录固定为项目根目录，不要把 `wiki/` 单独当作工作根。",
@@ -102,6 +165,30 @@ export function renderSkillMd(context: InitRenderContext): string {
     ...context.pageTypeNames,
   ].join(", ");
 
+  if (prefersChinese(context.languagePreference)) {
+    return [
+      "---",
+      `name: ${context.wikiName}`,
+      `description: ${context.wikiName} wiki skill，覆盖 ${descriptionKeywords}。回答领域问题前先执行 ${context.cliCommand} query --json。`,
+      "allowed-tools: Bash(node *)",
+      "user-invocable: false",
+      "---",
+      "",
+      `# ${context.wikiName}`,
+      "",
+      `这个 skill 覆盖的领域是：${context.domainDescription}`,
+      "",
+      ...renderLanguagePolicy(context),
+      "",
+      "## Query Flow",
+      `1. 先运行 \`${context.cliCommand} query "<question>" --json\`。`,
+      "2. 读取返回的页面后再回答，不要只看摘要。",
+      "3. 回答里尽量使用 `[[wikilinks]]` 引用相关页面。",
+      "4. 如果答案值得沉淀，就归档到 `wiki/pages/analyses/`，并更新 `wiki/index.md`、`wiki/log.md`、`.wiki/context.md`。",
+      "",
+    ].join("\n");
+  }
+
   return [
     "---",
     `name: ${context.wikiName}`,
@@ -114,7 +201,7 @@ export function renderSkillMd(context: InitRenderContext): string {
     "",
     `This skill covers the domain: ${context.domainDescription}`,
     "",
-    `Default language preference: ${context.languagePreference}. Unless the user explicitly requests another language, organize notes and answers in this language.`,
+    ...renderLanguagePolicy(context),
     "",
     "## Query Flow",
     `1. Run \`${context.cliCommand} query "<question>" --json\`.`,

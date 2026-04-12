@@ -34,11 +34,11 @@ export async function runRepairCommand(): Promise<void> {
   repaired.push(...await writeIfMissing(path.join(wikiRoot, ".wiki", "config.yaml"), renderConfigYaml(context)));
   repaired.push(...await writeIfMissing(
     path.join(wikiRoot, ".wiki", "schema.md"),
-    renderSchemaMarkdown(context.domainDescription, context.template, context.pageTypeNames),
+    renderSchemaMarkdown(context.domainDescription, context.template, context.pageTypeNames, context.languagePreference),
   ));
-  repaired.push(...await writeIfMissing(path.join(wikiRoot, ".wiki", "context.md"), `${renderContextMarkdown()}\n`));
-  repaired.push(...await writeIfMissing(path.join(wikiRoot, "wiki", "index.md"), renderIndexMarkdown()));
-  repaired.push(...await writeIfMissing(path.join(wikiRoot, "wiki", "log.md"), renderLogMarkdown()));
+  repaired.push(...await writeIfMissing(path.join(wikiRoot, ".wiki", "context.md"), `${renderContextMarkdown(context)}\n`));
+  repaired.push(...await writeIfMissing(path.join(wikiRoot, "wiki", "index.md"), renderIndexMarkdown(context)));
+  repaired.push(...await writeIfMissing(path.join(wikiRoot, "wiki", "log.md"), renderLogMarkdown(context)));
   repaired.push(...await writeIfMissing(path.join(wikiRoot, ".obsidian", "app.json"), `${renderObsidianAppConfig()}\n`));
   repaired.push(...await writeIfMissing(path.join(wikiRoot, "CLAUDE.md"), `${renderClaudeMd(context)}\n`));
   repaired.push(...await writeIfMissing(path.join(wikiRoot, "AGENTS.md"), `${renderAgentsMd(context)}\n`));

@@ -4,7 +4,7 @@
 TBD - created by archiving change llm-wiki-system. Update Purpose after archive.
 ## Requirements
 ### Requirement: CLI query 返回相关 pages（纯检索，不生成）
-`llm-wiki query <question> --json` SHALL 调用 qmd 对 `wiki/pages/` 执行混合搜索，返回相关页面列表，不调用 LLM 生成回答。
+`llm-wiki query <question> --json` SHALL 优先调用 qmd 对 `wiki/pages/` 执行搜索；当 qmd 不可用或退化时，回退到本地文本搜索，返回相关页面列表，不调用 LLM 生成回答。
 
 #### Scenario: agent 调用 JSON 输出
 - **WHEN** 外部 agent 执行 `llm-wiki query "attention mechanism" --json`
@@ -13,6 +13,11 @@ TBD - created by archiving change llm-wiki-system. Update Purpose after archive.
 #### Scenario: 无结果
 - **WHEN** 查询词在 wiki 中无匹配
 - **THEN** 返回空数组 `[]`，exit code 0
+
+#### Scenario: qmd 不可用
+- **WHEN** 本机未安装 qmd，或 qmd 命令不可执行
+- **THEN** 仍返回基于本地文本搜索的结果
+- **AND** 不因缺少 qmd 而阻塞 query
 
 ---
 
@@ -35,4 +40,3 @@ wiki Skill 的 description SHALL 包含足够的领域关键词，使 Claude Cod
 #### Scenario: 自动激活
 - **WHEN** 用户在安装了 harness-wiki skill 的 session 中提问 harness 相关问题
 - **THEN** Claude 自动调用 `llm-wiki query --json` 并将 wiki 内容纳入回答上下文
-
