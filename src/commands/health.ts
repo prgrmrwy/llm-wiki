@@ -1,5 +1,5 @@
 import path from "node:path";
-import { getQmdIndexStatePaths, isQmdAvailable } from "../utils/qmd.js";
+import { getQmdIndexStatePaths, getQmdIndexStatus, isQmdAvailable } from "../utils/qmd.js";
 import { loadInitRenderContext } from "../utils/init-context.js";
 import { exists, getUserHome, pathHasWiki } from "../utils/fs.js";
 import { checkCommand } from "../utils/process.js";
@@ -178,8 +178,12 @@ async function buildInstanceChecks(wikiRoot: string): Promise<CheckRow[]> {
 
   const qmdIndexCandidates = getQmdIndexStatePaths(wikiRoot);
   const hasQmdIndex = (await Promise.all(qmdIndexCandidates.map((candidate) => exists(candidate)))).every(Boolean);
+  const qmdIndexStatus = hasQmdIndex ? await getQmdIndexStatus(wikiRoot) : null;
   const hasObsidianConfig = await exists(path.join(wikiRoot, ".obsidian", "app.json"));
   const hasClaudianPlugin = await exists(path.join(wikiRoot, ".obsidian", "plugins", "claudian", "manifest.json"));
+  const hasShowHiddenFilesPlugin = await exists(
+    path.join(wikiRoot, ".obsidian", "plugins", "show-hidden-files", "manifest.json"),
+  );
 
   return [
     {
@@ -218,6 +222,14 @@ async function buildInstanceChecks(wikiRoot: string): Promise<CheckRow[]> {
       detail: "已检测到 Claudian 插件；缺失时请安装到 `.obsidian/plugins/claudian`",
     },
     {
+      label: "Show Hidden Files plugin",
+      ok: hasShowHiddenFilesPlugin,
+      detail: hasShowHiddenFilesPlugin
+        ? "已检测到 Show Hidden Files 插件"
+        : "未安装；可重新运行 `llm-wiki init` 或手动安装到 `.obsidian/plugins/show-hidden-files`",
+      optional: true,
+    },
+    {
       label: "Skill install",
       ok: skillInstalled,
       detail: skillInstalled
@@ -233,6 +245,16 @@ async function buildInstanceChecks(wikiRoot: string): Promise<CheckRow[]> {
           ? "未检测到完整索引状态，运行 `llm-wiki index`"
           : "qmd 未安装；当前可忽略，查询将退回本地文本搜索",
       optional: !qmdInstalled,
+    },
+    {
+      label: "qmd embed",
+      ok: qmdIndexStatus?.mode === "full",
+      detail: !hasQmdIndex
+        ? "尚未建立索引；运行 `llm-wiki index` 后再检查"
+        : qmdIndexStatus?.mode === "full"
+          ? "向量检索可用"
+          : qmdIndexStatus?.warning ?? "处于文本搜索模式；如已修复 embed 栈，可运行 `llm-wiki index` 重建索引",
+      optional: true,
     },
   ];
 }

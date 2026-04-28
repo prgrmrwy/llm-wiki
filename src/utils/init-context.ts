@@ -11,6 +11,7 @@ interface ConfigShape {
   template?: TemplateKey;
   created?: string;
   languagePreference?: string;
+  skillDescription?: string;
 }
 
 export async function loadInitRenderContext(rootDir: string): Promise<InitRenderContext> {
@@ -34,6 +35,9 @@ export async function loadInitRenderContext(rootDir: string): Promise<InitRender
     template,
     pageTypeNames,
     createdAt: config.created || new Date().toISOString(),
+    skillDescription: typeof config.skillDescription === "string" && config.skillDescription.trim().length > 0
+      ? config.skillDescription.trim()
+      : undefined,
   };
 }
 

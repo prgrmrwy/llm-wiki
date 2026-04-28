@@ -67,9 +67,10 @@ export async function ensureQmdIndex(wikiRoot: string, forceRefresh: boolean = f
   try {
     await runQmd(["embed"]);
   } catch (error) {
+    console.error(`[info] qmd embed 异常详情：${toErrorMessage(error)}`);
     status = {
       mode: "text-only",
-      warning: `qmd embed 失败，已退回到文本搜索：${toErrorMessage(error)}`,
+      warning: "qmd 向量检索不可用，正在使用本地文本搜索；如已修复 embed 栈，可运行 `llm-wiki index` 重建索引。",
     };
   }
 
@@ -108,6 +109,10 @@ export function getQmdIndexStatePaths(wikiRoot: string): string[] {
   return [
     path.join(wikiRoot, ".wiki", "qmd.yaml"),
   ];
+}
+
+export async function getQmdIndexStatus(wikiRoot: string): Promise<IndexStatus | null> {
+  return readExistingIndexStatus(path.join(wikiRoot, ".wiki", "qmd.yaml"));
 }
 
 function normalizeQueryResults(raw: string): QueryResult[] {

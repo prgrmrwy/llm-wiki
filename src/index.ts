@@ -46,10 +46,12 @@ program
   .description("Search wiki content with qmd.")
   .argument("<question>", "Question or keywords to search.")
   .option("--json", "Emit machine-readable JSON output.")
-  .action(async (question: string, options: { json?: boolean }) => {
+  .option("--root <path>", "Wiki instance root (absolute path); bypasses cwd-based detection.")
+  .action(async (question: string, options: { json?: boolean; root?: string }) => {
     await runQueryCommand({
       question,
       json: Boolean(options.json),
+      root: options.root,
     });
   });
 

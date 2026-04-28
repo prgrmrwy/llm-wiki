@@ -10,6 +10,7 @@ export interface InitRenderContext {
   template: SchemaTemplate;
   pageTypeNames: string[];
   createdAt: string;
+  skillDescription?: string;
 }
 
 function prefersChinese(languagePreference: string): boolean {
@@ -17,7 +18,7 @@ function prefersChinese(languagePreference: string): boolean {
 }
 
 export function renderConfigYaml(context: InitRenderContext): string {
-  return [
+  const lines = [
     `name: ${context.wikiName}`,
     `root: ${context.absoluteRoot.replace(/\\/g, "/")}`,
     `template: ${context.template.key}`,
@@ -25,8 +26,29 @@ export function renderConfigYaml(context: InitRenderContext): string {
     `languagePreference: ${context.languagePreference}`,
     `vault: .`,
     `contentDir: wiki`,
-    "",
-  ].join("\n");
+  ];
+  if (context.skillDescription && context.skillDescription.trim().length > 0) {
+    lines.push(`skillDescription: ${JSON.stringify(context.skillDescription)}`);
+  }
+  lines.push("");
+  return lines.join("\n");
+}
+
+export function defaultSkillDescription(
+  context: Pick<InitRenderContext, "domainDescription" | "pageTypeNames" | "languagePreference">,
+): string {
+  if (prefersChinese(context.languagePreference)) {
+    const pageTypeHint = context.pageTypeNames.join("、");
+    return `${context.domainDescription} 领域知识库 skill；当用户询问该领域的概念、框架、经验或分析（涉及 ${pageTypeHint} 等内容）时调用，会先查询本地 wiki 再作答。`;
+  }
+  return `Domain knowledge base skill for ${context.domainDescription}. Use when the user asks about concepts, frameworks, experiments, or analyses in this domain (covering ${context.pageTypeNames.join(", ")}); queries the local wiki before answering.`;
+}
+
+export function resolveSkillDescription(context: InitRenderContext): string {
+  if (context.skillDescription && context.skillDescription.trim().length > 0) {
+    return context.skillDescription.trim();
+  }
+  return defaultSkillDescription(context);
 }
 
 function renderLanguagePolicy(context: InitRenderContext): string[] {
@@ -159,19 +181,17 @@ export function renderAgentsMd(context: InitRenderContext): string {
 }
 
 export function renderSkillMd(context: InitRenderContext): string {
-  const descriptionKeywords = [
-    context.wikiName,
-    context.template.key,
-    ...context.pageTypeNames,
-  ].join(", ");
+  const rootArg = JSON.stringify(context.absoluteRoot.replace(/\\/g, "/"));
+  const queryCommand = `${context.cliCommand} query "<question>" --root ${rootArg} --json`;
+  const description = resolveSkillDescription(context);
 
   if (prefersChinese(context.languagePreference)) {
     return [
       "---",
       `name: ${context.wikiName}`,
-      `description: ${context.wikiName} wiki skill，覆盖 ${descriptionKeywords}。回答领域问题前先执行 ${context.cliCommand} query --json。`,
+      `description: ${description}`,
       "allowed-tools: Bash(node *)",
-      "user-invocable: false",
+      "user-invocable: true",
       "---",
       "",
       `# ${context.wikiName}`,
@@ -181,10 +201,12 @@ export function renderSkillMd(context: InitRenderContext): string {
       ...renderLanguagePolicy(context),
       "",
       "## Query Flow",
-      `1. 先运行 \`${context.cliCommand} query "<question>" --json\`。`,
+      `1. 先运行 \`${queryCommand}\`。\`--root\` 已锁定到本 wiki 的绝对路径，可在任意 cwd 下调用。`,
       "2. 读取返回的页面后再回答，不要只看摘要。",
       "3. 回答里尽量使用 `[[wikilinks]]` 引用相关页面。",
       "4. 如果答案值得沉淀，就归档到 `wiki/pages/analyses/`，并更新 `wiki/index.md`、`wiki/log.md`、`.wiki/context.md`。",
+      "",
+      "> 调整 skill 触发文案：编辑本 wiki `.wiki/config.yaml` 中的 `skillDescription` 字段，然后运行 `llm-wiki skill install <wiki-name>` 让改动落到 user/project scope。",
       "",
     ].join("\n");
   }
@@ -192,9 +214,9 @@ export function renderSkillMd(context: InitRenderContext): string {
   return [
     "---",
     `name: ${context.wikiName}`,
-    `description: Wiki skill for ${descriptionKeywords}. Use ${context.cliCommand} query --json before answering domain questions.`,
+    `description: ${description}`,
     "allowed-tools: Bash(node *)",
-    "user-invocable: false",
+    "user-invocable: true",
     "---",
     "",
     `# ${context.wikiName}`,
@@ -204,10 +226,12 @@ export function renderSkillMd(context: InitRenderContext): string {
     ...renderLanguagePolicy(context),
     "",
     "## Query Flow",
-    `1. Run \`${context.cliCommand} query "<question>" --json\`.`,
+    `1. Run \`${queryCommand}\`. The \`--root\` flag pins this wiki, so the command works from any cwd.`,
     "2. Read the returned pages before answering.",
     "3. Cite relevant pages using `[[wikilinks]]` in the response when possible.",
     "4. If the answer should persist, archive it into `wiki/pages/analyses/` and update `wiki/index.md`, `wiki/log.md`, `.wiki/context.md`.",
+    "",
+    "> Tweak the skill trigger description: edit the `skillDescription` field in this wiki's `.wiki/config.yaml`, then run `llm-wiki skill install <wiki-name>` to push the change to user/project scope.",
     "",
   ].join("\n");
 }

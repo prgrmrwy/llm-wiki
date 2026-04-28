@@ -6,6 +6,7 @@ import { buildEnvironmentChecks, printChecks } from "./health.js";
 import { upsertRegistryEntry } from "../registry.js";
 import { renderSchemaMarkdown, schemaTemplates, suggestTemplateKey } from "../templates/schema.js";
 import {
+  defaultSkillDescription,
   renderClaudeMd,
   renderConfigYaml,
   renderContextMarkdown,
@@ -35,6 +36,9 @@ interface RepairableCheck {
 const DEFAULT_LANGUAGE_PREFERENCE = "中文";
 const CLAUDIAN_RELEASE_BASE_URL = "https://github.com/YishenTu/claudian/releases/latest/download";
 const CLAUDIAN_PLUGIN_FILES = ["main.js", "manifest.json", "styles.css"] as const;
+const SHOW_HIDDEN_FILES_RELEASE_BASE_URL =
+  "https://github.com/polyipseity/obsidian-show-hidden-files/releases/latest/download";
+const SHOW_HIDDEN_FILES_PLUGIN_FILES = ["main.js", "manifest.json", "styles.css"] as const;
 const OFFICIAL_NPM_REGISTRY = "https://registry.npmjs.org/";
 
 export async function runInitCommand(options: InitCommandOptions): Promise<void> {
@@ -92,6 +96,19 @@ export async function runInitCommand(options: InitCommandOptions): Promise<void>
         validate: (values) => (values.length > 0 ? true : "至少选择一个 page type。"),
       });
 
+  const suggestedSkillDescription = defaultSkillDescription({
+    domainDescription: description,
+    pageTypeNames: selectedPageTypes,
+    languagePreference: languagePreference.trim(),
+  });
+  const skillDescription = options.skipPrompts
+    ? suggestedSkillDescription
+    : (await input({
+        message: "Skill 触发文案（模型据此判断何时调用本 wiki skill；可直接回车采用建议）：",
+        default: suggestedSkillDescription,
+        validate: (value) => (value.trim().length > 0 ? true : "请输入触发文案。"),
+      })).trim();
+
   if (!options.skipPrompts) {
     const accepted = await confirm({
       message: `用 ${templateKey} 模板初始化 ${wikiName}？`,
@@ -103,10 +120,11 @@ export async function runInitCommand(options: InitCommandOptions): Promise<void>
   }
 
   console.log("\nStep 3/4 写入 wiki 目录结构和控制文件");
-  await createWikiStructure(cwd, wikiName, description, languagePreference.trim(), template, selectedPageTypes, createdAt);
+  await createWikiStructure(cwd, wikiName, description, languagePreference.trim(), template, selectedPageTypes, createdAt, skillDescription);
 
   console.log("Step 4/4 安装集成并更新全局注册表");
   await maybeInstallClaudian(cwd, options);
+  await maybeInstallShowHiddenFiles(cwd, options);
   await upsertRegistryEntry({
     name: wikiName,
     path: cwd,
@@ -185,6 +203,10 @@ function printSetupGuidance(failedChecks: Array<{ label: string; detail: string 
   console.log("- `llm-wiki repair`: 仅用于 init 之后补齐缺失的 wiki 元文件，不负责安装环境依赖。");
   console.log("- Claudian: init 阶段可直接安装到 `.obsidian/plugins/claudian/`；如跳过，也可稍后手动安装。");
   console.log("  GitHub: https://github.com/YishenTu/claudian");
+  console.log(
+    "- Show Hidden Files: init 阶段可直接安装到 `.obsidian/plugins/show-hidden-files/`，让 Obsidian 文件树展示 `.wiki/`、`.claude/` 等点目录。",
+  );
+  console.log("  GitHub: https://github.com/polyipseity/obsidian-show-hidden-files");
 }
 
 function getRepairSteps(label: string): string[] {
@@ -379,6 +401,44 @@ async function maybeInstallClaudian(rootDir: string, options: InitCommandOptions
   }
 }
 
+async function maybeInstallShowHiddenFiles(rootDir: string, options: InitCommandOptions): Promise<void> {
+  const pluginDir = path.join(rootDir, ".obsidian", "plugins", "show-hidden-files");
+  const shouldInstall = options.skipPrompts
+    ? false
+    : await confirm({
+        message: "是否下载并安装 Show Hidden Files 到当前 vault？（让 Obsidian 显示 `.wiki/`、`.claude/` 等点目录）",
+        default: true,
+      });
+
+  if (!shouldInstall) {
+    console.log("Show Hidden Files: 跳过安装。");
+    return;
+  }
+
+  console.log("Show Hidden Files: 开始下载 GitHub release...");
+
+  try {
+    await ensureDir(pluginDir);
+
+    for (const fileName of SHOW_HIDDEN_FILES_PLUGIN_FILES) {
+      const response = await fetch(`${SHOW_HIDDEN_FILES_RELEASE_BASE_URL}/${fileName}`);
+      if (!response.ok) {
+        throw new Error(`下载 ${fileName} 失败（HTTP ${response.status}）`);
+      }
+
+      const content = Buffer.from(await response.arrayBuffer());
+      await writeTextFile(path.join(pluginDir, fileName), content.toString("utf8"));
+    }
+
+    console.log(`Show Hidden Files: 已安装到 ${pluginDir}`);
+    console.log("  提示：首次启用需要在 Obsidian 设置 → Community plugins 中开启社区插件并启用 Show Hidden Files。");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.log(`Show Hidden Files: 安装失败，已保留 wiki 初始化结果。${message}`);
+    console.log("可稍后手动安装，或重新运行 init。");
+  }
+}
+
 async function maybeOpenObsidian(rootDir: string, wikiName: string, options: InitCommandOptions): Promise<void> {
   const obsidianCli = resolveObsidianCliCommand();
   if (!obsidianCli) {
@@ -432,6 +492,7 @@ async function createWikiStructure(
   template: (typeof schemaTemplates)[TemplateKey],
   pageTypeNames: string[],
   createdAt: string,
+  skillDescription: string,
 ): Promise<void> {
   const context = {
     wikiName,
@@ -442,6 +503,7 @@ async function createWikiStructure(
     template,
     pageTypeNames,
     createdAt,
+    skillDescription,
   };
 
   const dirs = [

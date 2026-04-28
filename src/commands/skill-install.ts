@@ -1,7 +1,9 @@
 import { select } from "@inquirer/prompts";
 import path from "node:path";
 import { getRegistryEntryByName, readRegistry } from "../registry.js";
-import { copyFileWithDirs, ensureDir, getUserHome } from "../utils/fs.js";
+import { renderSkillMd } from "../templates/wiki.js";
+import { loadInitRenderContext } from "../utils/init-context.js";
+import { ensureDir, getUserHome, writeTextFile } from "../utils/fs.js";
 
 interface SkillInstallOptions {
   wikiName: string;
@@ -19,7 +21,6 @@ export async function runSkillInstallCommand(options: SkillInstallOptions): Prom
     );
   }
 
-  const source = path.join(entry.path, ".claude", "skills", entry.name, "SKILL.md");
   const scope = await select<"user" | "project">({
     message: "选择安装 scope：",
     choices: [
@@ -36,11 +37,24 @@ export async function runSkillInstallCommand(options: SkillInstallOptions): Prom
     ],
   });
 
+  const context = await loadInitRenderContext(entry.path);
+  const rendered = `${renderSkillMd(context)}\n`;
+
   const destination = scope === "user"
     ? path.join(getUserHome(), ".claude", "skills", entry.name, "SKILL.md")
     : path.join(process.cwd(), ".claude", "skills", entry.name, "SKILL.md");
 
   await ensureDir(path.dirname(destination));
-  await copyFileWithDirs(source, destination);
+  await writeTextFile(destination, rendered);
+
+  const canonical = path.join(entry.path, ".claude", "skills", entry.name, "SKILL.md");
+  if (canonical !== destination) {
+    await ensureDir(path.dirname(canonical));
+    await writeTextFile(canonical, rendered);
+  }
+
   console.log(`Installed skill to ${destination}`);
+  if (canonical !== destination) {
+    console.log(`Refreshed wiki copy at ${canonical}`);
+  }
 }
