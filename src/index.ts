@@ -72,8 +72,9 @@ program
 program
   .command("repair")
   .description("Regenerate missing wiki metadata files in the current wiki.")
-  .action(async () => {
-    await runRepairCommand();
+  .option("--force", "Overwrite managed metadata files even if they exist (re-render from current templates).")
+  .action(async (options: { force?: boolean }) => {
+    await runRepairCommand({ force: Boolean(options.force) });
   });
 
 const skillProgram = program.command("skill").description("Manage wiki skills.");

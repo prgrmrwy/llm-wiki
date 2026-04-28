@@ -187,7 +187,7 @@ export function renderSchemaMarkdown(
     lines.push(`### ${pageType.name}`);
     lines.push(pageType.summary);
     lines.push("");
-    lines.push(zh ? "必填章节：" : "Required sections:");
+    lines.push(zh ? "建议章节（不适用时可省略，不要为了凑齐而填空话）：" : "Suggested sections (omit when they don't fit; do not pad with empty content):");
     for (const section of pageType.requiredSections) {
       lines.push(`- ${section}`);
     }
@@ -210,5 +210,44 @@ export function renderSchemaMarkdown(
     lines.push(`- ${rule}`);
   }
 
+  lines.push("");
+  lines.push(...renderBehaviorRules(zh));
+
   return `${lines.join("\n")}\n`;
+}
+
+function renderBehaviorRules(zh: boolean): string[] {
+  if (zh) {
+    return [
+      "## 行为规则",
+      "这些规则与 page type 无关，所有页面创建、更新、ingest、query 归档都必须遵守。",
+      "",
+      "1. **来源引用**：页面里每个事实、断言或数据点都要带来源标注 `[src: <path>]`，路径相对 wiki 根目录，通常指向 `sources/` 下的原始材料；如果是综合多来源的判断，列出所有来源。",
+      "2. **矛盾不覆盖**：当新材料和已有页面冲突时，不要直接删除旧表述。改成 Obsidian callout 标注：",
+      "   ```",
+      "   > [!contradiction]",
+      "   > 新来源 [src: sources/...] 主张 X，与原页面（来自 [src: sources/...]）的 Y 冲突。",
+      "   ```",
+      "   随后在 `wiki/log.md` 记录该矛盾，等用户决策。",
+      "3. **Wikilink 严格匹配文件名**：`[[name]]` 必须对应一个真实存在的 `name.md`（大小写、横线、中文都要一字不差）。需要展示文案时用 pipe 语法：`[[name|展示文案]]`。新建链接前先确认目标文件存在或同时创建。",
+      "4. **Index 是真理之源**：任何页面的创建、重命名、删除都要同步更新 `wiki/index.md`；新页面要补一行摘要 `- [[name]]: 一句话描述`，删除/重命名要清掉旧条目。`wiki/log.md` 追加该次操作的时间和原因。",
+      "",
+    ];
+  }
+
+  return [
+    "## Behavior Rules",
+    "These rules apply to all pages regardless of page type and must be followed during page creation, updates, ingest, and query archival.",
+    "",
+    "1. **Source citation**: Every fact, claim, or data point on a page must carry a source tag `[src: <path>]`. Paths are relative to the wiki root and usually point under `sources/`. For multi-source synthesis, list all relevant sources.",
+    "2. **Don't overwrite contradictions**: When new material conflicts with an existing page, do not delete the old statement. Annotate with an Obsidian callout instead:",
+    "   ```",
+    "   > [!contradiction]",
+    "   > New source [src: sources/...] claims X, conflicting with Y from the original page (per [src: sources/...]).",
+    "   ```",
+    "   Log the contradiction in `wiki/log.md` and wait for user resolution.",
+    "3. **Strict wikilink filename match**: `[[name]]` must point to an existing `name.md` (exact case, hyphens, and characters). Use pipe syntax `[[name|display text]]` for custom display. Verify the target exists or create it together with the link.",
+    "4. **Index is the source of truth**: Every page create/rename/delete must sync `wiki/index.md`. New pages get a one-line summary `- [[name]]: short description`; renames/deletes must remove or update the stale entry. Append the operation and reason to `wiki/log.md`.",
+    "",
+  ];
 }
